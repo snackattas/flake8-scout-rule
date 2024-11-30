@@ -1,4 +1,4 @@
-name: Python application lint, test, upload code coverage
+name: Unit Tests
 
 on:
   push:

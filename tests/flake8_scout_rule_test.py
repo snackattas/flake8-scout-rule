@@ -36,7 +36,7 @@ def test_black_box(python_dir_with_violations: str) -> None:
     assert result.returncode == 1  # There should be violations, so it should return 1
     assert result.stderr == ""
     assert "Found 18 violations" in result.stdout
-    assert "Automatically adding '# noqa: <codes>' annotations" in result.stdout
+    assert "Automatically adding '# noqa: <errors>' annotations" in result.stdout
 
     result2 = subprocess.run(
         command,
@@ -60,7 +60,7 @@ def test_black_box_with_ignore(python_dir_with_violations: str) -> None:
     assert result.returncode == 1  # There should be violations, so it should return 1
     assert result.stderr == ""
     assert "Found 14 violations" in result.stdout
-    assert "Automatically adding '# noqa: <codes>' annotations" in result.stdout
+    assert "Automatically adding '# noqa: <errors>' annotations" in result.stdout
 
 
 def test_black_box_with_select(python_dir_with_violations: str) -> None:
@@ -75,7 +75,7 @@ def test_black_box_with_select(python_dir_with_violations: str) -> None:
     assert result.returncode == 1  # There should be violations, so it should return 1
     assert result.stderr == ""
     assert "Found 12 violations" in result.stdout
-    assert "Automatically adding '# noqa: <codes>' annotations" in result.stdout
+    assert "Automatically adding '# noqa: <errors>' annotations" in result.stdout
 
 
 def test_violation_by_line_add_noqa_to_line_ends_with_noqa():

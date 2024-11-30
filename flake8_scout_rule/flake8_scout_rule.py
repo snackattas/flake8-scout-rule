@@ -137,14 +137,14 @@ class Flake8ScoutRuleFormatter(Default):
     def noqa_annotation_adder(self):
         no_prompt_prefix = "Automatically a" if self.options.no_prompt else "A"
         print(
-            f"{no_prompt_prefix}dding '# noqa: <codes>' annotations to the files "
+            f"{no_prompt_prefix}dding '# noqa: <errors>' annotations to the files "
             "with violations now:"
         )
         violations_by_file = self.group_violations_by_file(self.violations)
         for file_violations in violations_by_file:
             violations_by_line = self.group_file_violations_by_line(file_violations)
             LOG.debug(
-                f"Adding '# noqa: <codes>' annotations to file: '{violations_by_line[0].filename}'"
+                f"Adding '# noqa: <errors>' annotations to file: '{violations_by_line[0].filename}'"
             )
             self.update_lines_in_file(violations_by_line)
             print(".", end="")
@@ -155,7 +155,7 @@ class Flake8ScoutRuleFormatter(Default):
 
     def stop(self):
         if not self.violations:
-            print("No violations found, so nothing to add '# noqa: <codes>' to. Exiting.")
+            print("No violations found, so nothing to add '# noqa: <errors>' to. Exiting.")
             return
 
         print(f"\nFound {len(self.violations)} violations.")

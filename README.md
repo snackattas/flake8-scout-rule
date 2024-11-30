@@ -1,5 +1,9 @@
 # Flake8 Scout Rule
 
+[![codecov](https://codecov.io/github/snackattas/flake8-scout-rule/graph/badge.svg?token=0B7MI160C2)](https://codecov.io/github/snackattas/flake8-scout-rule)
+[![Python application lint, test, upload code coverage](https://github.com/snackattas/flake8-scout-rule/actions/workflows/test.yml/badge.svg)](https://github.com/snackattas/flake8-scout-rule/actions/workflows/test.yml)
+
+
 ![sample usage](https://github.com/user-attachments/assets/93e0c654-0138-4bc2-81cb-9cefe10ceec9)
 
 > The Scout Rule: Leave Your Code Better Than You Found It
@@ -13,7 +17,7 @@ But let's face it, dealing with legacy code can be a real pain. It might not fol
 This handy tool is like a digital cleanup crew. It works in two steps:
 
 1. **Finds the Mess**: It runs `flake8` to identify all the coding mistakes.
-2. **Adds a Note**: It politely adds a `# noqa: <codes>` comment next to each issue, basically saying, "Hey, future developer, this code needs some love."
+2. **Adds a Note**: It politely adds a `# noqa: <errors>` comment next to each issue, basically saying, "Hey, future developer, this code needs some love."
 
 **Why Use It?**
 
@@ -31,6 +35,12 @@ By following this approach, you can gradually improve your codebase, one commit 
 
 # How to run
 
+First install `flake8` and `flake8-scout-rule`
+```commandline
+pip install flake8 flake8-scout-rule
+```
+
+Then run `flake8-scout-rule` like  this, as a flake8 formatter
 ```commandline
 flake8 --format=scout .
 ```
@@ -41,3 +51,9 @@ This option automatically update files with violations without prompting the use
 ```commandline
 flake8 --format=scout --no-prompt .
 ```
+
+# License
+Free software: MIT License
+
+# Credits
+This package was created by Zach Attas aka [snackattas](https://github.com/snackattas), but couldn't have been possible without [flake8](https://github.com/PyCQA/flake8)!
