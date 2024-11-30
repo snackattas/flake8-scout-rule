@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flake8_scout_rule"
+authors = [
+    {name = "Zachary Attas", email = "zach.attas@gmail.com"},
+]
+description = """
+    Post-run flake8 tool that allows you to automatically add inline linter directives to ignore current
+    linting checks, allowing developers to use the scout rule to slowly adopt a repo to the linter's patterns.
+"""
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["flake8", "flake-scout-rule", "scout-rule", "override", "ignore", "linting", "linter"]
+license = {text = "BSD-3-Clause"}
+dependencies = [
+    "flake8>=3.8.0",
+    'importlib-metadata; python_version>="3.7"',
+]
+dynamic = ["version"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | \.svn
+  | _build
+  | buck-out
+  | build
+  | dist
+  | tests/flake8_violation_files/*
+)/
+'''
+
+[tool.isort]
+profile = "black"
+
+[tool.flake8]
+config = ".flake8"

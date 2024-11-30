@@ -1,0 +1,1 @@
+The files in this directory are real python files, they are used by the fixture provision_python_files_to_run_flake8_against.  They specifically don't have the .py extension so that they are not affected by linting rules for the repo
