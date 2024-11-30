@@ -1,0 +1,6 @@
+[flake8]
+exclude = .git, __pycache__, venv .pyc
+max-line-length = 100
+max-complexity = 7
+per-file-ignores =
+    riddled_with_linting_errors.py: E, F, W

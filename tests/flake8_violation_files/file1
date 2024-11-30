@@ -1,0 +1,7 @@
+import unittest
+
+def fake_function1():
+    nospacebetweenequals=1
+    dict={'key': 'value'}
+    for n in range(5):
+        fake_function=val
