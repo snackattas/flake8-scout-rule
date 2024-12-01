@@ -8,7 +8,7 @@ long_description = (this_directory / "README.md").read_text()
 setup(
     name="flake8_scout_rule",
     license="MIT",
-    version="1.0.0",
+    version="1.0.1",
     description="""A Flake8 formatter that applies '# noqa: <errors>' annotations to flake8 violations found, helping to incrementally improve code quality.""",  # noqa: E501
     long_description=long_description,
     long_description_content_type="text/markdown",

@@ -1,8 +1,8 @@
 # Flake8 Scout Rule
 
+[![PyPI version](https://badge.fury.io/py/flake8-scout-rule.svg)](https://badge.fury.io/py/flake8-scout-rule)
+[![Unit Tests](https://github.com/snackattas/flake8-scout-rule/actions/workflows/test.yml/badge.svg)](https://github.com/snackattas/flake8-scout-rule/actions/workflows/test.yml)
 [![codecov](https://codecov.io/github/snackattas/flake8-scout-rule/graph/badge.svg?token=0B7MI160C2)](https://codecov.io/github/snackattas/flake8-scout-rule)
-[![Python application lint, test, upload code coverage](https://github.com/snackattas/flake8-scout-rule/actions/workflows/test.yml/badge.svg)](https://github.com/snackattas/flake8-scout-rule/actions/workflows/test.yml)
-
 
 ![sample usage](https://github.com/user-attachments/assets/93e0c654-0138-4bc2-81cb-9cefe10ceec9)
 
