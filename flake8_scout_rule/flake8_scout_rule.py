@@ -24,6 +24,16 @@ class ViolationsByLine:
 
     @property
     def add_noqa_to_line(self) -> str:
+        """
+        Returns the valid '# noqa: <errors>' annotation to existing line.
+
+        This method processes the physical line of code and appends the appropriate
+        '# noqa: <errors>' annotation based on the violations codes. If the line
+        already has a '# noqa' annotation, it updates it with the new codes.
+
+        :return: The line of code with the '# noqa: <errors>' annotation.
+        :rtype: str
+        """
         # Remove the newline character if there is one
         physical_line = self.physical_line.rstrip("\n")
         if physical_line.endswith("# noqa"):
@@ -70,12 +80,40 @@ class Flake8ScoutRuleFormatter(Default):
             parse_from_config=True,
         )
 
-    @staticmethod
-    def _random_letters(num_letters: int) -> str:
-        return "".join(random.choices(string.ascii_letters, k=num_letters))
+    def format(self, error: Violation) -> str:
+        """Instance of format from the Default formatter interface."""
+        self.violations.append(error)
+        return super().format(error)
+
+    def stop(self):
+        """Instance of stop from the Default formatter interface."""
+        if not self.violations:
+            print("No violations found, so nothing to add '# noqa: <errors>' to. Exiting.")
+            return
+
+        print(f"\nFound {len(self.violations)} violations.")
+        if not self.options.no_prompt:
+            response = self.prompt_for_corrections()
+            if not response:
+                print("Not correcting violations, exiting.")
+                return
+
+        self._noqa_annotation_adder()
+        print("\nDone")
 
     @staticmethod
-    def update_lines_in_file(violations: List[ViolationsByLine]) -> None:
+    def _update_lines_in_file(violations: List[ViolationsByLine]) -> None:
+        """
+        Updates lines in the specified file by adding '# noqa: <errors>' annotations.
+
+        This method assumes that the violations are all part of the same file
+
+        It creates a backup of the file before making any changes and
+        restores the original file in case of an error during the update process.
+
+        :param violations: A list of violations grouped by line within a file.
+        :type violations: List[ViolationsByLine]
+        """
         backup_extension = f".bak_{Flake8ScoutRuleFormatter._random_letters(5)}"
         filename = violations[0].filename
         backup_file = f"{filename}{backup_extension}"
@@ -100,6 +138,16 @@ class Flake8ScoutRuleFormatter(Default):
 
     @staticmethod
     def prompt_for_corrections() -> bool:
+        """
+        Prompts the user to decide whether to correct violations inline.
+
+        This method repeatedly asks the user for input until a valid response ('y' or 'n')
+        is provided. It returns True if the user chooses to correct the violations, and False
+        otherwise.
+
+        :return: True if the user wants to correct the violations, False otherwise.
+        :rtype: bool
+        """
         while True:
             response = input("Do you want to correct these violations inline now? (y/n): ")
             formatted_response = response.strip().lower()[0:1]
@@ -109,13 +157,39 @@ class Flake8ScoutRuleFormatter(Default):
                 print("Invalid input. Please enter 'y' or 'n'.")
 
     @staticmethod
-    def group_violations_by_file(violations: List[Violation]) -> List[List[Violation]]:
+    def _group_violations_by_file(violations: List[Violation]) -> List[List[Violation]]:
+        """
+        Groups violations by file.
+
+        This method processes a list of violations and groups them by the filename.
+        It ensures that all violations belonging to the same file are grouped together
+        in a list.
+
+        :param violations: A list of `Violation` objects to be grouped by file.
+        :type violations: List[Violation]
+        :return: A list of lists, where each inner list contains `Violation` objects for a single
+        file.
+        :rtype: List[List[Violation]]
+        """
         groups = groupby(violations, key=lambda v: v.filename)
         violations_by_file = [list(group) for key, group in groups]
         return violations_by_file
 
     @staticmethod
-    def group_file_violations_by_line(violations: List[Violation]) -> List[ViolationsByLine]:
+    def _group_file_violations_by_line(violations: List[Violation]) -> List[ViolationsByLine]:
+        """
+        Groups violations by line within a file.
+
+        This method processes a list of violations from the whole flake8 run, and groups them by
+        line number within each file. It ensures that multiple violations on the same line are
+        combined into a single `ViolationsByLine` object.
+
+        :param violations: A list of `Violation` objects to be grouped by line.
+        :type violations: List[Violation]
+        :return: A list of `ViolationsByLine` objects, each representing a line with one or more
+        violations.
+        :rtype: List[ViolationsByLine]
+        """
         violations_by_line: List[ViolationsByLine] = []
         for violation in violations:
             found = False
@@ -134,36 +208,30 @@ class Flake8ScoutRuleFormatter(Default):
                 violations_by_line.append(vbl)
         return violations_by_line
 
-    def noqa_annotation_adder(self):
+    def _noqa_annotation_adder(self) -> None:
+        """
+        Adds '# noqa: <errors>' annotations to lines in files with violations.
+
+        The method groups violations by file and then by line within each file,
+        ensuring that multiple violations on the same line are handled correctly.
+        It creates a backup of each file before making any changes and restores the
+        original file in case of an error during the update process.
+        """
         no_prompt_prefix = "Automatically a" if self.options.no_prompt else "A"
         print(
             f"{no_prompt_prefix}dding '# noqa: <errors>' annotations to the files "
             "with violations now:"
         )
-        violations_by_file = self.group_violations_by_file(self.violations)
+        violations_by_file = self._group_violations_by_file(self.violations)
         for file_violations in violations_by_file:
-            violations_by_line = self.group_file_violations_by_line(file_violations)
+            violations_by_line = self._group_file_violations_by_line(file_violations)
             LOG.debug(
                 f"Adding '# noqa: <errors>' annotations to file: '{violations_by_line[0].filename}'"
             )
-            self.update_lines_in_file(violations_by_line)
+            self._update_lines_in_file(violations_by_line)
             print(".", end="")
 
-    def format(self, error: Violation) -> str:
-        self.violations.append(error)
-        return super().format(error)
-
-    def stop(self):
-        if not self.violations:
-            print("No violations found, so nothing to add '# noqa: <errors>' to. Exiting.")
-            return
-
-        print(f"\nFound {len(self.violations)} violations.")
-        if not self.options.no_prompt:
-            response = self.prompt_for_corrections()
-            if not response:
-                print("Not correcting violations, exiting.")
-                return
-
-        self.noqa_annotation_adder()
-        print("\nDone")
+    @staticmethod
+    def _random_letters(num_letters: int) -> str:
+        """Generates a random string of the specified length consisting of ASCII letters."""
+        return "".join(random.choices(string.ascii_letters, k=num_letters))
