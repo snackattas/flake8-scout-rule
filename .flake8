@@ -3,4 +3,7 @@ exclude = .git, __pycache__, venv .pyc
 max-line-length = 100
 max-complexity = 7
 per-file-ignores =
-    riddled_with_linting_errors.py: E, F, W
+    riddled_with_linting_errors.py: E
+abc = 5
+abd =
+    riddled_with_linting_errors.py: E102{5}

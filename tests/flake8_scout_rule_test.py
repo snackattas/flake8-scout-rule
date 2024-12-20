@@ -161,7 +161,9 @@ def test_flake8_scout_rule_formatter(mock_input, python_dir_with_violations):
     with patch("sys.stdout", new=StringIO()) as captured_stdout:
         formatter.stop()
 
-    assert "Found 4 violations" in captured_stdout.getvalue()
+    stdout = captured_stdout.getvalue()
+    print(f"Captured stdout:\n{stdout}")
+    assert "Found 4 violations" in stdout
     noqa_addition = "  # noqa: E225, F841"
     with open(file1) as f:
         content = f.read()

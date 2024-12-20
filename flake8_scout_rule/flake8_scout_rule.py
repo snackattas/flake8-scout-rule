@@ -3,6 +3,7 @@ import fileinput
 import os
 import random
 import string
+import sys
 from dataclasses import dataclass, field
 from itertools import groupby
 from shutil import move
@@ -12,8 +13,14 @@ from flake8 import LOG
 from flake8.defaults import NOQA_INLINE_REGEXP
 from flake8.formatting.default import Default
 from flake8.options.manager import OptionManager
+from flake8.options.parse_args import parse_args
 from flake8.violation import Violation
+from flake8.options.config import load_config,_find_config_file
 
+@dataclass
+class ViolationsByFile:
+    filename: str
+    violations: List[Violation] = field(default_factory=list)
 
 @dataclass
 class ViolationsByLine:
@@ -98,7 +105,16 @@ class Flake8ScoutRuleFormatter(Default):
                 print("Not correcting violations, exiting.")
                 return
 
-        self._noqa_annotation_adder()
+        violations_by_file_by_line = self._noqa_annotation_adder()
+
+        # print(f"violations_by_file_by_line: {violations_by_file_by_line}")
+        # config = _find_config_file(os.getcwd())
+        # result = None
+        # if config:
+        #     configparser, string = load_config(config, extra=[])
+        # plugins, namespace = parse_args(sys.argv[1:])
+        # print(f"loaded config: {result}")
+
         print("\nDone")
 
     @staticmethod
@@ -157,7 +173,7 @@ class Flake8ScoutRuleFormatter(Default):
                 print("Invalid input. Please enter 'y' or 'n'.")
 
     @staticmethod
-    def _group_violations_by_file(violations: List[Violation]) -> List[List[Violation]]:
+    def _group_violations_by_file(violations: List[Violation]) -> List[ViolationsByFile]:
         """
         Groups violations by file.
 
@@ -169,14 +185,16 @@ class Flake8ScoutRuleFormatter(Default):
         :type violations: List[Violation]
         :return: A list of lists, where each inner list contains `Violation` objects for a single
         file.
-        :rtype: List[List[Violation]]
+        :rtype: List[ViolationsByFile]
         """
-        groups = groupby(violations, key=lambda v: v.filename)
-        violations_by_file = [list(group) for key, group in groups]
+        grp_by_filename = groupby(violations, key=lambda v: v.filename)
+        violations_by_file = [
+            ViolationsByFile(filename=key, violations=list(grp)) for key, grp in grp_by_filename
+        ]
         return violations_by_file
 
     @staticmethod
-    def _group_file_violations_by_line(violations: List[Violation]) -> List[ViolationsByLine]:
+    def _group_file_violations_by_line(violations_by_file: ViolationsByFile) -> List[ViolationsByLine]:
         """
         Groups violations by line within a file.
 
@@ -191,7 +209,7 @@ class Flake8ScoutRuleFormatter(Default):
         :rtype: List[ViolationsByLine]
         """
         violations_by_line: List[ViolationsByLine] = []
-        for violation in violations:
+        for violation in violations_by_file.violations:
             found = False
             for vbl in violations_by_line:
                 if vbl.line_number == violation.line_number:
@@ -208,7 +226,7 @@ class Flake8ScoutRuleFormatter(Default):
                 violations_by_line.append(vbl)
         return violations_by_line
 
-    def _noqa_annotation_adder(self) -> None:
+    def _noqa_annotation_adder(self) -> List[List[ViolationsByLine]]:
         """
         Adds '# noqa: <errors>' annotations to lines in files with violations.
 
@@ -223,13 +241,16 @@ class Flake8ScoutRuleFormatter(Default):
             "with violations now:"
         )
         violations_by_file = self._group_violations_by_file(self.violations)
+        violations_by_file_by_line = []
         for file_violations in violations_by_file:
             violations_by_line = self._group_file_violations_by_line(file_violations)
+            violations_by_file_by_line.append(violations_by_line)
             LOG.debug(
                 f"Adding '# noqa: <errors>' annotations to file: '{violations_by_line[0].filename}'"
             )
             self._update_lines_in_file(violations_by_line)
             print(".", end="")
+        return violations_by_file_by_line
 
     @staticmethod
     def _random_letters(num_letters: int) -> str:
