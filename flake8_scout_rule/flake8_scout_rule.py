@@ -3,7 +3,6 @@ import fileinput
 import os
 import random
 import string
-import sys
 from dataclasses import dataclass, field
 from itertools import groupby
 from shutil import move
@@ -12,15 +11,17 @@ from typing import List
 from flake8 import LOG
 from flake8.defaults import NOQA_INLINE_REGEXP
 from flake8.formatting.default import Default
+from flake8.options.config import _find_config_file, load_config
 from flake8.options.manager import OptionManager
 from flake8.options.parse_args import parse_args
 from flake8.violation import Violation
-from flake8.options.config import load_config,_find_config_file
+
 
 @dataclass
 class ViolationsByFile:
     filename: str
     violations: List[Violation] = field(default_factory=list)
+
 
 @dataclass
 class ViolationsByLine:
@@ -194,7 +195,9 @@ class Flake8ScoutRuleFormatter(Default):
         return violations_by_file
 
     @staticmethod
-    def _group_file_violations_by_line(violations_by_file: ViolationsByFile) -> List[ViolationsByLine]:
+    def _group_file_violations_by_line(
+        violations_by_file: ViolationsByFile,
+    ) -> List[ViolationsByLine]:
         """
         Groups violations by line within a file.
 
