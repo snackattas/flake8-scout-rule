@@ -25,7 +25,7 @@ def python_dir_with_violations() -> Generator[str, None, None]:
 
 
 def test_black_box(python_dir_with_violations: str) -> None:
-    command = f"flake8 --format=scout --no-prompt {python_dir_with_violations}"
+    command = f"flake8 --format=scout --no-review-prompt {python_dir_with_violations}"
     result = subprocess.run(
         command,
         cwd=python_dir_with_violations,
@@ -49,7 +49,7 @@ def test_black_box(python_dir_with_violations: str) -> None:
 
 
 def test_black_box_with_ignore(python_dir_with_violations: str) -> None:
-    command = f"flake8 --format=scout --no-prompt --ignore E302,F401 {python_dir_with_violations}"
+    command = f"flake8 --format=scout --no-review-prompt --ignore E302,F401 {python_dir_with_violations}"
     result = subprocess.run(
         command,
         cwd=python_dir_with_violations,
@@ -64,7 +64,7 @@ def test_black_box_with_ignore(python_dir_with_violations: str) -> None:
 
 
 def test_black_box_with_select(python_dir_with_violations: str) -> None:
-    command = f"flake8 --format=scout --no-prompt --select F841,E225 {python_dir_with_violations}"
+    command = f"flake8 --format=scout --no-review-prompt --select F841,E225 {python_dir_with_violations}"
     result = subprocess.run(
         command,
         cwd=python_dir_with_violations,
@@ -114,7 +114,7 @@ def test_violation_by_line_add_noqa_to_line_codes_dont_add_all_code():
 
 @patch("builtins.input", return_value="y")
 def test_flake8_scout_rule_formatter(mock_input, python_dir_with_violations):
-    options = Namespace(output_file=None, color=False, tee=False, no_prompt=False)
+    options = Namespace(output_file=None, color=False, tee=False, no_review_prompt=False)
     formatter = Flake8ScoutRuleFormatter(options)
     formatter.start()
     # Too lazy to add ALL the violations, just add a few
