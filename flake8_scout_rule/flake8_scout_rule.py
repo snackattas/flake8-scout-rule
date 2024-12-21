@@ -178,6 +178,7 @@ class Flake8ScoutRuleFormatter(Default):
                 "per_file_violations_tracked key in the [flake8_scout_rule] section of the flake8 "
                 f"configuration file '{configurations.config_file}': \n{lines_not_parsed_joined}")
             )
+        current_file_violations_tracked.sort(key=lambda v: v.filename)
         return current_file_violations_tracked
 
     @classmethod
@@ -209,26 +210,24 @@ class Flake8ScoutRuleFormatter(Default):
         )
 
     @staticmethod
-    def existing_violations_by_count_per_file(filename: str) -> ExistingViolationsByCount:
-        """Returns the existing violations by count for the specified file."""
+    def _get_file_content(filename: str) -> str:
+        """Returns the content of the specified file."""
         filepath = os.path.join(os.getcwd(), filename)
 
         with open(filepath, 'r', encoding='utf-8') as f:
             file_content = f.read()
+        return file_content
 
-        evbc = ExistingViolationsByCount(filename=filename, violations_by_count=[])
+    @staticmethod
+    def _existing_violations_by_count_per_file(filename: str, file_content: str) -> List[ExistingViolationsByCount]:
+        """Returns the existing violations by count for the specified file."""
         matches = re.findall(NOQA_INLINE_REGEXP, file_content)
-        error_codes = []
-
-        for match in matches:
-            if not match:
-                continue
-            codes = [c.strip() for c in re.split(r",\s*", match[0])]
-            error_codes.extend(codes)
+        error_codes = [c.strip() for match in matches for c in re.split(r",\s*", match[0])]
         counter = Counter(error_codes)
-
-
-
+        evbc = []
+        for code, count in counter.items():
+            evbc.append(ExistingViolationsByCount(filename=filename, code=code, count=count))
+        return evbc
 
     def format(self, error: Violation) -> str:
         """Instance of format from the Default formatter interface."""
@@ -248,7 +247,7 @@ class Flake8ScoutRuleFormatter(Default):
                 print("Not correcting violations, exiting.")
                 return
 
-        violations_by_file_by_line = self._noqa_annotation_adder()
+        violations_by_file = self._noqa_annotation_adder()
 
         if self.options.no_update_flake8_file:
             print("Not updating the flake8 configuration file, exiting.")
@@ -256,17 +255,61 @@ class Flake8ScoutRuleFormatter(Default):
 
         # Now add the defaults if they don't exist yet
         configurations = self.load_raw_per_file_violations_tracked(add_defaults=True)
-        # If no per_file_violations_tracked exist yet, we can just write the new ones, don't need
-        # to reconcile with existing ones
-        if not self.per_file_violations_tracked:
-            pfvt = "\n".join([vbc.violations_by_count_string for vbc in violations_by_file_by_line])
-            configurations.configparser["flake8_scout_rule"]["per_file_violations_tracked"] = pfvt
-            with open(configurations.config_file, "w") as f:
-                configurations.configparser.write(f)
-        else:
 
+        filtered_vbf: List[ViolationsByFile] = []
+        for vbf in violations_by_file:
+            existing_violations_by_count = vbf.existing_violations_by_count
+            per_file_violations_already_tracked = vbf.per_file_violations_already_tracked
 
+            # If there are no existing violations, just add the ones found here, don't need to
+            # worry about the per_file_violations_tracked
+            if not existing_violations_by_count and not per_file_violations_already_tracked:
+                filtered_vbf.append(vbf)
+                continue
 
+            new_violations_by_count = vbf.violations_by_count
+            reconciled_violations: List[ViolationsByCount] = []
+            if existing_violations_by_count:
+                for nv in new_violations_by_count:
+                    evbc_code = list(filter(lambda e: e.code == nv.code, existing_violations_by_count))
+                    if evbc_code:
+                        evbc_code = evbc_code[0]
+                    # If we see the noqa codes already in the file, just add the existing count to the
+                    # new violations found this round
+                    if evbc_code:
+                        reconciled_violations.append(ViolationsByCount(
+                            filename=nv.filename,
+                            code=nv.code,
+                            count=nv.count + evbc_code.count
+                        ))
+                    else:
+                        reconciled_violations.append(nv)
+            else:
+                reconciled_violations = new_violations_by_count
+
+            if per_file_violations_already_tracked:
+                per_file_violations_already_tracked = per_file_violations_already_tracked.violations_by_count
+                for per_file_violations in per_file_violations_already_tracked:
+                    found = list(filter(lambda nvbc: nvbc.code == per_file_violations.code, new_violations_by_count))
+                    if not found:
+                        # TODO: maybe reconcile this with the existing codes in the file
+                        reconciled_violations.append(per_file_violations)
+            reconciled_violations.sort(key=lambda vbc: vbc.code)
+            filtered_vbf.append(
+                ViolationsByFile(
+                    filename=vbf.filename, violations_by_count=reconciled_violations
+                )
+            )
+        # Now add in any per_file_violations_tracked that weren't found in this run
+        for pfvt in self.per_file_violations_tracked:
+            found = list(filter(lambda vbf: vbf.filename == pfvt.filename, filtered_vbf))
+            if not found:
+                filtered_vbf.append(ViolationsByFile(filename=p.filename, violations_by_count=p.violations_by_count))
+
+        pfvt = "\n".join([vbf.violations_by_count_string for vbf in filtered_vbf])
+        configurations.configparser["flake8_scout_rule"]["per_file_violations_tracked"] = pfvt
+        with open(configurations.config_file, "w") as f:
+            configurations.configparser.write(f)
 
         print("\nDone")
 
@@ -326,7 +369,7 @@ class Flake8ScoutRuleFormatter(Default):
                 print("Invalid input. Please enter 'y' or 'n'.")
 
     @staticmethod
-    def _group_violations_by_file_and_line(violations: List[Violation]) -> List[ViolationsByFile]:
+    def _group_violations_by_file_and_line(violations: List[Violation], per_file_violations_tracked: List[PerFileViolationsTracked]) -> List[ViolationsByFile]:
         """
         Groups violations by file.
 
@@ -348,6 +391,12 @@ class Flake8ScoutRuleFormatter(Default):
         for vbf in violations_by_file:
             vbf.violations_by_line = Flake8ScoutRuleFormatter._group_file_violations_by_line(vbf)
             vbf.violations_by_count = Flake8ScoutRuleFormatter._group_file_violations_by_count(vbf)
+            file_content = Flake8ScoutRuleFormatter._get_file_content(vbf.filename)
+            vbf.existing_violations_by_count = Flake8ScoutRuleFormatter._existing_violations_by_count_per_file(vbf.filename, file_content)
+
+            found_per_file_violations_tracked = filter(lambda p: p.filename == vbf.filename, per_file_violations_tracked)
+            if found_per_file_violations_tracked:
+                vbf.per_file_violations_already_tracked = found_per_file_violations_tracked[0]
         return violations_by_file
 
     @staticmethod
@@ -425,7 +474,7 @@ class Flake8ScoutRuleFormatter(Default):
             f"{no_review_prompt_prefix}dding '# noqa: <errors>' annotations to the files "
             "with violations now:"
         )
-        violations_by_file_and_line = self._group_violations_by_file_and_line(self.violations)
+        violations_by_file_and_line = self._group_violations_by_file_and_line(self.violations, self.per_file_violations_tracked)
         for file_violations in violations_by_file_and_line:
             LOG.debug(
                 f"Adding '# noqa: <errors>' annotations to file: '{file_violations.filename}'"

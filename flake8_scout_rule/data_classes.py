@@ -59,12 +59,23 @@ class ViolationsByCount:
         """
         return f"{self.code}{{{self.count}}}"
 
+ExistingViolationsByCount = ViolationsByCount
+
+
+@dataclass
+class PerFileViolationsTracked:
+    filename: str
+    violations_by_count: List[ViolationsByCount]
+
+
 @dataclass
 class ViolationsByFile:
     filename: str
     violations: List[Violation] = field(default_factory=list)
     violations_by_line: List[ViolationsByLine] = field(default_factory=list)
     violations_by_count: List[ViolationsByCount] = field(default_factory=list)
+    existing_violations_by_count: List[ViolationsByCount] = field(default_factory=list)
+    per_file_violations_already_tracked: Optional[PerFileViolationsTracked] = None
 
     @property
     def violations_by_count_string(self) -> str:
@@ -76,13 +87,6 @@ class ViolationsByFile:
         """
         vbcs = ", ".join([vbc.code_with_violation_count for vbc in self.violations_by_count])
         return f"{self.filename}: {vbcs}"
-
-@dataclass
-class PerFileViolationsTracked:
-    filename: str
-    violations_by_count: List[ViolationsByCount]
-
-ExistingViolationsByCount = PerFileViolationsTracked
 
 @dataclass
 class Flake8ScoutRuleConfigurations:
