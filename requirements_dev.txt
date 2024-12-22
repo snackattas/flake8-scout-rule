@@ -12,6 +12,8 @@ flake8-docstrings==1.7.0
 flake8-pylint==0.2.1
 flake8-simplify==0.21.0
 flake8-use-fstring==1.4
+ipdb==0.13.13
+ipython==8.20.0
 isort==5.13.2
 mypy==1.13.0
 mypy-extensions==1.0.0

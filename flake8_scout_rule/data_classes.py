@@ -65,7 +65,7 @@ class ViolationsByCount:
         :return: The code with the count of violations.
         :rtype: str
         """
-        return f"{self.code}{{{self.count}}}"
+        return f"{self.code.upper()}{{{self.count}}}"
 
 
 ExistingViolationsByCount = ViolationsByCount
