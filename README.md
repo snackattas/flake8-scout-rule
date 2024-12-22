@@ -3,6 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/flake8-scout-rule.svg)](https://badge.fury.io/py/flake8-scout-rule)
 [![Unit Tests](https://github.com/snackattas/flake8-scout-rule/actions/workflows/test.yml/badge.svg)](https://github.com/snackattas/flake8-scout-rule/actions/workflows/test.yml)
 [![codecov](https://codecov.io/github/snackattas/flake8-scout-rule/graph/badge.svg?token=0B7MI160C2)](https://codecov.io/github/snackattas/flake8-scout-rule)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/flake8-scout-rule)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/y/snackattas/flake8-scout-rule)
 
