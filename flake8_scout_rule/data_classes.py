@@ -1,19 +1,25 @@
+"""Data classes for the Flake8 Scout Rule plugin."""
+
 from configparser import ConfigParser
 from dataclasses import dataclass, field
 from typing import List, Optional
 
 from flake8.defaults import NOQA_INLINE_REGEXP
 from flake8.violation import Violation
+from typing_extensions import Self
+
 
 @dataclass
 class ViolationsByLine:
+    """Data class for consolidating all the violations in a file by line of code."""
+
     filename: str
     line_number: int
     physical_line: str
     codes: List[str] = field(default_factory=list)
 
     @property
-    def add_noqa_to_line(self) -> str:
+    def add_noqa_to_line(self: Self) -> str:
         """
         Returns the valid '# noqa: <errors>' annotation to existing line.
 
@@ -36,19 +42,21 @@ class ViolationsByLine:
             new_codes: List[str] = [code for code in self.codes if code not in existing_codes]
             if new_codes:
                 return f"{physical_line}, {', '.join(new_codes)}"
-            else:
-                return physical_line
+            return physical_line
         return f"{physical_line}  # noqa: {', '.join(self.codes)}"
 
+
+# TODO: Remove this class, use a Collections.counter on the ViolationsByFile class
 @dataclass
-# TODO: remove this class, just use a Collections.counter on the ViolationsByFile class
 class ViolationsByCount:
+    """Data class for consolidating all violations in a file by the frequency of code violation."""
+
     filename: str
     code: str
     count: int
 
     @property
-    def code_with_violation_count(self) -> str:
+    def code_with_violation_count(self: Self) -> str:
         """
         Returns the code with the count of violations.
 
@@ -59,17 +67,25 @@ class ViolationsByCount:
         """
         return f"{self.code}{{{self.count}}}"
 
+
 ExistingViolationsByCount = ViolationsByCount
 
 
 @dataclass
 class PerFileViolationsTracked:
+    """Data class for parsed per_file_violations_tracked key in the flake8 configuration file."""
+
     filename: str
     violations_by_count: List[ViolationsByCount]
 
 
 @dataclass
 class ViolationsByFile:
+    """Data class for consolidating all violations in a file along with other violation types.
+
+    Think of this as the parent violation class.
+    """
+
     filename: str
     violations: List[Violation] = field(default_factory=list)
     violations_by_line: List[ViolationsByLine] = field(default_factory=list)
@@ -78,7 +94,7 @@ class ViolationsByFile:
     per_file_violations_already_tracked: Optional[PerFileViolationsTracked] = None
 
     @property
-    def violations_by_count_string(self) -> str:
+    def violations_by_count_string(self: Self) -> str:
         """
         Returns the list of codes and their counts as a single string.
 
@@ -88,9 +104,11 @@ class ViolationsByFile:
         vbcs = ", ".join([vbc.code_with_violation_count for vbc in self.violations_by_count])
         return f"{self.filename}: {vbcs}"
 
+
 @dataclass
 class Flake8ScoutRuleConfigurations:
+    """Data class for storing the Flake8 Scout Rule configurations."""
+
     config_file: Optional[str] = None
     configparser: Optional[ConfigParser] = None
     raw_per_file_violations_tracked: Optional[str] = None
-

@@ -5,7 +5,7 @@ from argparse import Namespace
 from io import StringIO
 from shutil import copy
 from typing import Generator
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flake8.violation import Violation
@@ -15,7 +15,7 @@ from flake8_scout_rule.flake8_scout_rule import ViolationsByLine
 
 
 @pytest.fixture
-def python_dir_with_violations() -> Generator[str, None, None]:
+def python_dir_with_violations_fixture() -> Generator[str, None, None]:
     cwd = os.getcwd()
     files = [os.path.join(cwd, "tests", "flake8_violation_files", f) for f in ["file1", "file2"]]
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -24,11 +24,11 @@ def python_dir_with_violations() -> Generator[str, None, None]:
         yield tmp_dir
 
 
-def test_black_box(python_dir_with_violations: str) -> None:
-    command = f"flake8 --format=scout --no-review-prompt {python_dir_with_violations}"
+def test_black_box(python_dir_with_violations_fixture: str) -> None:
+    command = f"flake8 --format=scout --no-review-prompt {python_dir_with_violations_fixture}"
     result = subprocess.run(
         command,
-        cwd=python_dir_with_violations,
+        cwd=python_dir_with_violations_fixture,
         capture_output=True,
         text=True,
         shell=True,
@@ -40,7 +40,7 @@ def test_black_box(python_dir_with_violations: str) -> None:
 
     result2 = subprocess.run(
         command,
-        cwd=python_dir_with_violations,
+        cwd=python_dir_with_violations_fixture,
         capture_output=True,
         text=True,
         shell=True,
@@ -48,11 +48,14 @@ def test_black_box(python_dir_with_violations: str) -> None:
     assert result2.returncode == 0  # There should be no violations, now they should be noqa'd
 
 
-def test_black_box_with_ignore(python_dir_with_violations: str) -> None:
-    command = f"flake8 --format=scout --no-review-prompt --ignore E302,F401 {python_dir_with_violations}"
+def test_black_box_with_ignore(python_dir_with_violations_fixture: str) -> None:
+    command = (
+        "flake8 --format=scout --no-review-prompt --ignore E302,F401 "
+        f"{python_dir_with_violations_fixture}"
+    )
     result = subprocess.run(
         command,
-        cwd=python_dir_with_violations,
+        cwd=python_dir_with_violations_fixture,
         capture_output=True,
         text=True,
         shell=True,
@@ -63,11 +66,14 @@ def test_black_box_with_ignore(python_dir_with_violations: str) -> None:
     assert "Automatically adding '# noqa: <errors>' annotations" in result.stdout
 
 
-def test_black_box_with_select(python_dir_with_violations: str) -> None:
-    command = f"flake8 --format=scout --no-review-prompt --select F841,E225 {python_dir_with_violations}"
+def test_black_box_with_select(python_dir_with_violations_fixture: str) -> None:
+    command = (
+        "flake8 --format=scout --no-review-prompt --select F841,E225 "
+        f"{python_dir_with_violations_fixture}"
+    )
     result = subprocess.run(
         command,
-        cwd=python_dir_with_violations,
+        cwd=python_dir_with_violations_fixture,
         capture_output=True,
         text=True,
         shell=True,
@@ -78,14 +84,14 @@ def test_black_box_with_select(python_dir_with_violations: str) -> None:
     assert "Automatically adding '# noqa: <errors>' annotations" in result.stdout
 
 
-def test_violation_by_line_add_noqa_to_line_ends_with_noqa():
+def test_violation_by_line_add_noqa_to_line_ends_with_noqa() -> None:
     vbl = ViolationsByLine(
         filename="main.py", line_number=42, physical_line="x =  1  # noqa\n", codes=["E222"]
     )
     assert vbl.add_noqa_to_line == "x =  1  # noqa"
 
 
-def test_violation_by_line_add_noqa_to_line_codes_match():
+def test_violation_by_line_add_noqa_to_line_codes_match() -> None:
     vbl = ViolationsByLine(
         filename="main.py",
         line_number=42,
@@ -95,7 +101,7 @@ def test_violation_by_line_add_noqa_to_line_codes_match():
     assert vbl.add_noqa_to_line == "x =  1  # noqa: E222, E225, E226"
 
 
-def test_violation_by_line_add_noqa_to_line_codes_dont_add_existing_code():
+def test_violation_by_line_add_noqa_to_line_codes_dont_add_existing_code() -> None:
     vbl = ViolationsByLine(
         filename="main.py",
         line_number=42,
@@ -105,7 +111,7 @@ def test_violation_by_line_add_noqa_to_line_codes_dont_add_existing_code():
     assert vbl.add_noqa_to_line == "x =  1  # noqa: E222, E225, E226"
 
 
-def test_violation_by_line_add_noqa_to_line_codes_dont_add_all_code():
+def test_violation_by_line_add_noqa_to_line_codes_dont_add_all_code() -> None:
     vbl = ViolationsByLine(
         filename="main.py", line_number=42, physical_line="x = 1\n", codes=["E226", "E222"]
     )
@@ -113,14 +119,16 @@ def test_violation_by_line_add_noqa_to_line_codes_dont_add_all_code():
 
 
 @patch("builtins.input", return_value="y")
-def test_flake8_scout_rule_formatter(mock_input, python_dir_with_violations):
+def test_flake8_scout_rule_formatter(
+    mock_input: Mock, python_dir_with_violations_fixture: str
+) -> None:
     options = Namespace(output_file=None, color=False, tee=False, no_review_prompt=False)
     formatter = Flake8ScoutRuleFormatter(options)
     formatter.start()
     # Too lazy to add ALL the violations, just add a few
 
-    file1 = python_dir_with_violations + "/file1.py"
-    file2 = python_dir_with_violations + "/file2.py"
+    file1 = python_dir_with_violations_fixture + "/file1.py"
+    file2 = python_dir_with_violations_fixture + "/file2.py"
     violations = [
         Violation(
             code="F841",
@@ -165,11 +173,11 @@ def test_flake8_scout_rule_formatter(mock_input, python_dir_with_violations):
     print(f"Captured stdout:\n{stdout}")
     assert "Found 4 violations" in stdout
     noqa_addition = "  # noqa: E225, F841"
-    with open(file1) as f:
+    with open(file1, encoding="UTF-8") as f:
         content = f.read()
         assert content.count(noqa_addition) == 1
 
-    with open(file2) as f:
+    with open(file2, encoding="UTF-8") as f:
         content = f.read()
         assert content.count(noqa_addition) == 1
     assert mock_input.called is True

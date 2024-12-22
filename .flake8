@@ -2,8 +2,7 @@
 exclude = .git, __pycache__, venv .pyc
 max-line-length = 100
 max-complexity = 7
+ignore = PLW511, W503
 per-file-ignores =
-    riddled_with_linting_errors.py: E
-abc = 5
-abd =
-    riddled_with_linting_errors.py: E102{5}
+    riddled_with_linting_errors.py: D, E, F, PLC, ANN
+    tests/flake8_scout_rule_test.py: PLW621, PLC116, PLW510, D103, D100, PLC114

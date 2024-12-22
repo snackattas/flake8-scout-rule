@@ -13,10 +13,10 @@ repos:
     hooks:
     - id: mypy
   - repo: https://github.com/psf/black
-    rev: 24.10.0
+    rev: 23.1.0
     hooks:
     - id: black
-      args: [ ".", "--config", ".pyproject.toml" ]
+      args: [ "--config", ".pyproject.toml" ]
   - repo: https://github.com/pycqa/flake8
     rev: 6.0.0
     hooks:
