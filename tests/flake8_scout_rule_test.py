@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import tempfile
 from argparse import Namespace
@@ -24,6 +25,17 @@ def python_dir_with_violations_fixture() -> Generator[str, None, None]:
         yield tmp_dir
 
 
+@pytest.fixture(autouse=True)
+def flake8_file_fixture() -> Generator[None, None, None]:
+    flake8_path = os.path.join(os.getcwd(), ".flake8")
+    assert os.path.isfile(flake8_path) is True
+
+    temp_flake8_path = os.path.join(os.getcwd(), ".flake8_temp")
+    shutil.move(flake8_path, temp_flake8_path)
+    yield
+    shutil.move(temp_flake8_path, flake8_path)
+
+
 def test_black_box(python_dir_with_violations_fixture: str) -> None:
     command = f"flake8 --format=scout --no-review-prompt {python_dir_with_violations_fixture}"
     result = subprocess.run(
@@ -35,7 +47,7 @@ def test_black_box(python_dir_with_violations_fixture: str) -> None:
     )
     assert result.returncode == 1  # There should be violations, so it should return 1
     assert result.stderr == ""
-    assert "Found 18 violations" in result.stdout
+    assert "Found 47 violations" in result.stdout
     assert "Automatically adding '# noqa: <errors>' annotations" in result.stdout
 
     result2 = subprocess.run(
@@ -62,7 +74,7 @@ def test_black_box_with_ignore(python_dir_with_violations_fixture: str) -> None:
     )
     assert result.returncode == 1  # There should be violations, so it should return 1
     assert result.stderr == ""
-    assert "Found 14 violations" in result.stdout
+    assert "Found 43 violations" in result.stdout
     assert "Automatically adding '# noqa: <errors>' annotations" in result.stdout
 
 
@@ -122,7 +134,13 @@ def test_violation_by_line_add_noqa_to_line_codes_dont_add_all_code() -> None:
 def test_flake8_scout_rule_formatter(
     mock_input: Mock, python_dir_with_violations_fixture: str
 ) -> None:
-    options = Namespace(output_file=None, color=False, tee=False, no_review_prompt=False)
+    options = Namespace(
+        output_file=None,
+        color=False,
+        tee=False,
+        no_review_prompt=False,
+        no_update_flake8_config=False,
+    )
     formatter = Flake8ScoutRuleFormatter(options)
     formatter.start()
     # Too lazy to add ALL the violations, just add a few

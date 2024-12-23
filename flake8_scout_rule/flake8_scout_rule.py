@@ -67,7 +67,7 @@ class Flake8ScoutRuleFormatter(Default):
         """
         options.format = "default"
         super().__init__(options)
-        if self.options.no_update_flake8_file:
+        if self.options.no_update_flake8_config:
             return
 
         # Validate the flake8 configuration file's per_file_violations_tracked key is formatted
@@ -231,15 +231,15 @@ class Flake8ScoutRuleFormatter(Default):
             parse_from_config=True,
         )
 
-        no_update_flake8_file_help = (
+        no_update_flake8_config_help = (
             "(Default: false) Stop from automatically creating/updating the flake8 configuration "
             "file's [flake8_scout_rule] section with the violations that were found in this run."
         )
         parser.add_option(
-            "--no-update-flake8-file",
+            "--no-update-flake8-config",
             action="store_true",
             default=False,
-            help=no_update_flake8_file_help,
+            help=no_update_flake8_config_help,
             parse_from_config=True,
         )
 
@@ -285,7 +285,7 @@ class Flake8ScoutRuleFormatter(Default):
 
         violations_by_file = self._noqa_annotation_adder()
 
-        if self.options.no_update_flake8_file:
+        if self.options.no_update_flake8_config:
             print("Not updating the flake8 configuration file, exiting.")
             return
 
