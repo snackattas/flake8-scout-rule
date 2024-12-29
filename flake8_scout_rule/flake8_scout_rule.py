@@ -39,6 +39,7 @@ from flake8_scout_rule.data_classes import (
     ViolationsByFile,
     ViolationsByLine,
 )
+from flake8_scout_rule.utils import normalize_filename
 
 
 class Flake8ScoutRuleFormatter(Default):
@@ -48,10 +49,6 @@ class Flake8ScoutRuleFormatter(Default):
     which is then used to track the violations in the next run of flake8, and by the pre-commit hook
     to ensure that the violations are not reintroduced.
     """
-
-    option_manager: Optional[OptionManager] = None
-    violations: List[Violation] = []
-    per_file_violations_tracked: List[PerFileViolationsTracked] = []
 
     def __init__(self: Self, options: argparse.Namespace) -> None:
         """
@@ -66,7 +63,11 @@ class Flake8ScoutRuleFormatter(Default):
         the plugin and flake8 from running.
         """
         options.format = "default"
+        self.option_manager: Optional[OptionManager] = None
         super().__init__(options)
+        self.violations: List[Violation] = []
+        self.per_file_violations_tracked: List[PerFileViolationsTracked] = []
+
         if self.options.no_update_flake8_config:
             return
 
@@ -90,7 +91,7 @@ class Flake8ScoutRuleFormatter(Default):
         config_file = _find_config_file(os.getcwd())
         if not config_file:
             if add_defaults:
-                config_file = os.path.join(os.getcwd(), ".flake8")
+                config_file = os.path.join(os.path.realpath(os.getcwd()), ".flake8")
                 print(
                     "WARNING - No flake8 config file found, creating a default one at "
                     f"'{config_file}'."
@@ -246,9 +247,7 @@ class Flake8ScoutRuleFormatter(Default):
     @staticmethod
     def _get_file_content(filename: str) -> str:
         """Return the content of the specified file."""
-        filepath = os.path.join(os.getcwd(), filename)
-
-        with open(filepath, "r", encoding="UTF-8") as f:
+        with open(filename, "r", encoding="UTF-8") as f:
             file_content = f.read()
         return file_content
 
@@ -283,8 +282,12 @@ class Flake8ScoutRuleFormatter(Default):
                 print("Not correcting violations, exiting.")
                 return
 
-        violations_by_file = self._noqa_annotation_adder()
+        # Normalize the filenames in the violations now to match the per_file_violations_tracked
+        self.violations = [
+            v._replace(filename=normalize_filename(v.filename)) for v in self.violations
+        ]
 
+        violations_by_file = self._noqa_annotation_adder()
         if self.options.no_update_flake8_config:
             print("Not updating the flake8 configuration file, exiting.")
             return

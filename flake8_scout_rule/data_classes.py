@@ -1,5 +1,4 @@
 """Data classes for the Flake8 Scout Rule plugin."""
-
 from configparser import ConfigParser
 from dataclasses import dataclass, field
 from typing import List, Optional
