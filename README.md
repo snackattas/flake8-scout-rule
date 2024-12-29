@@ -3,6 +3,10 @@
 [![PyPI version](https://badge.fury.io/py/flake8-scout-rule.svg)](https://badge.fury.io/py/flake8-scout-rule)
 [![Unit Tests](https://github.com/snackattas/flake8-scout-rule/actions/workflows/test.yml/badge.svg)](https://github.com/snackattas/flake8-scout-rule/actions/workflows/test.yml)
 [![codecov](https://codecov.io/github/snackattas/flake8-scout-rule/graph/badge.svg?token=0B7MI160C2)](https://codecov.io/github/snackattas/flake8-scout-rule)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![linting: flake8](https://img.shields.io/badge/linting-flake8-yellowgreen)](https://github.com/PyCQA/flake8)
+[![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/flake8-scout-rule)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/y/snackattas/flake8-scout-rule)
 

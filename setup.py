@@ -1,3 +1,5 @@
+"""Setup script for flake8-scout-rule package."""
+
 from pathlib import Path
 
 from setuptools import find_packages, setup
@@ -35,12 +37,15 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Software Development :: Quality Assurance",
     ],
-    install_requires=["flake8>=3.8.0", 'importlib-metadata; python_version<"3.7"'],
+    install_requires=[
+        "flake8>=3.8.0",
+        "pre-commit>=2.0.0",
+        'importlib-metadata; python_version<"3.7"',
+    ],
     tests_require=[
         "black",
         "isort",
         "mypy",
-        "pre-commit",
         "pytest",
     ],
 )
