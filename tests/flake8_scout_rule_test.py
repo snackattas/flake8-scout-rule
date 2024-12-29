@@ -18,8 +18,10 @@ from flake8_scout_rule.flake8_scout_rule import ViolationsByLine
 
 @dataclass
 class TestData:
+    """Dataclass to hold test data."""
+
     files: List[str]
-    dir: str
+    dir: str  # noqa: A003
 
 
 @pytest.fixture
@@ -112,7 +114,7 @@ def test_black_box_with_path_passed_to_flake8(violations_test_dir: TestData) -> 
     flake8_file = os.path.realpath(flake8_file)
     assert f"No flake8 config file found, creating a default one at '{flake8_file}'" in stdout
     assert os.path.isfile(flake8_file) is True
-    with open(flake8_file, "r") as f:
+    with open(flake8_file, "r", encoding="UTF-8") as f:
         flake8_content = f.read()
 
     assert "[flake8_scout_rule]\nper_file_violations_tracked = \n\t" in flake8_content
@@ -127,7 +129,7 @@ def test_black_box_with_path_passed_to_flake8(violations_test_dir: TestData) -> 
         shell=True,
     )
     assert result2.returncode == 0  # There should be no violations, now they should be noqa'd
-    with open(flake8_file, "r") as f:
+    with open(flake8_file, "r", encoding="UTF-8") as f:
         flake8_content2 = f.read()
     assert flake8_content2 == flake8_content
 
@@ -155,7 +157,7 @@ def test_black_box(violations_test_dir: TestData) -> None:
     flake8_file = os.path.realpath(flake8_file)
     assert f"No flake8 config file found, creating a default one at '{flake8_file}'" in stdout
     assert os.path.isfile(flake8_file) is True
-    with open(flake8_file, "r") as f:
+    with open(flake8_file, "r", encoding="UTF-8") as f:
         flake8_content = f.read()
 
     assert "[flake8_scout_rule]\nper_file_violations_tracked = \n\t" in flake8_content
@@ -170,7 +172,7 @@ def test_black_box(violations_test_dir: TestData) -> None:
         shell=True,
     )
     assert result2.returncode == 0  # There should be no violations, now they should be noqa'd
-    with open(flake8_file, "r") as f:
+    with open(flake8_file, "r", encoding="UTF-8") as f:
         flake8_content2 = f.read()
     assert flake8_content2 == flake8_content
 

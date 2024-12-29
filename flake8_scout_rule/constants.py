@@ -1,3 +1,4 @@
+"""Constants for the flake8_scout_rule plugin."""
 import re
 
 CODE_WITH_VIOLATION_COUNT_REGEX = re.compile(

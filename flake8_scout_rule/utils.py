@@ -1,9 +1,10 @@
+"""Utility functions for the flake8-scout rule."""
 import os
 
 
 def normalize_filename(filename: str) -> str:
     """
-    Returns the normalized filename.
+    Return the normalized filename.
 
     :return: The normalized filename.
     :rtype: str

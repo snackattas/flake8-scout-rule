@@ -80,7 +80,7 @@ class Flake8ScoutRuleFormatter(Default):
             )
 
     @staticmethod
-    def load_raw_per_file_violations_tracked(  # noqa: CCR001
+    def load_raw_per_file_violations_tracked(  # noqa: CCR001, PLR911
         add_defaults: bool = False,
     ) -> Optional[Flake8ScoutRuleConfigurations]:
         """Load the raw per_file_violations_tracked string from the flake8 configuration file.
@@ -148,7 +148,7 @@ class Flake8ScoutRuleFormatter(Default):
         )
 
     @staticmethod
-    def format_per_file_violations_tracked(  # noqa: CCR001, C901
+    def format_per_file_violations_tracked(  # noqa: CCR001, C901, PLR914
         configurations: Flake8ScoutRuleConfigurations,
     ) -> List[PerFileViolationsTracked]:
         """
@@ -269,7 +269,7 @@ class Flake8ScoutRuleFormatter(Default):
         self.violations.append(error)
         return super().format(error)
 
-    def stop(self: Self) -> None:  # noqa: C901, CCR001, PLR912, PLR914
+    def stop(self: Self) -> None:  # noqa: C901, CCR001, PLR912, PLR914, PLR915
         """Instance of stop from the Default formatter interface."""
         if not self.violations:
             print("No violations found, so nothing to add '# noqa: <errors>' to. Exiting.")
@@ -320,7 +320,7 @@ class Flake8ScoutRuleFormatter(Default):
                     current_code = nv.code
                     evbc_code_found: List[ViolationsByCount] = list(
                         filter(
-                            lambda e: e.code == current_code,
+                            lambda e: e.code == current_code,  # noqa: PLW640
                             existing_violations_by_count,
                         )
                     )
@@ -345,7 +345,7 @@ class Flake8ScoutRuleFormatter(Default):
                     code = per_file_violations.code
                     found = list(
                         filter(
-                            lambda nvbc: nvbc.code == code,
+                            lambda nvbc: nvbc.code == code,  # noqa: PLW640
                             new_violations_by_count,
                         )
                     )
@@ -360,7 +360,7 @@ class Flake8ScoutRuleFormatter(Default):
         for pfvt in self.per_file_violations_tracked:
             filename = pfvt.filename
             found = list(
-                filter(lambda fvbf: fvbf.filename == filename, filtered_vbf)  # type: ignore
+                filter(lambda fvbf: fvbf.filename == filename, filtered_vbf)  # type: ignore  # noqa: PLW640
             )
             if not found:
                 vbc: List[ViolationsByCount] = pfvt.violations_by_count
@@ -456,7 +456,7 @@ class Flake8ScoutRuleFormatter(Default):
             formatted_response = response.strip().lower()[0:1]
             if formatted_response in ["y", "n"]:
                 return formatted_response == "y"
-            elif formatted_response == "?":
+            if formatted_response == "?":
                 print(
                     "\nEnter 'y' to correct the violations inline (by adding '# noqa: <errors>') "
                     " to the actual affected lines.\nThen the formatter will update the flake8 "
@@ -502,7 +502,7 @@ class Flake8ScoutRuleFormatter(Default):
             filename = vbf.filename
             found_per_file_violations_tracked = list(
                 filter(
-                    lambda p: p.filename == filename,
+                    lambda p: p.filename == filename,  # noqa: PLW640
                     per_file_violations_tracked,
                 )
             )
