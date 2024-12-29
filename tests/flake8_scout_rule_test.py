@@ -3,9 +3,10 @@ import shutil
 import subprocess
 import tempfile
 from argparse import Namespace
+from dataclasses import dataclass
 from io import StringIO
 from shutil import copy
-from typing import Generator
+from typing import Generator, List
 from unittest.mock import Mock, patch
 
 import pytest
@@ -15,19 +16,29 @@ from flake8_scout_rule import Flake8ScoutRuleFormatter
 from flake8_scout_rule.flake8_scout_rule import ViolationsByLine
 
 
+@dataclass
+class TestData:
+    files: List[str]
+    dir: str
+
+
 @pytest.fixture
-def python_dir_with_violations_fixture() -> Generator[str, None, None]:
+def violations_test_dir() -> Generator[TestData, None, None]:
     cwd = os.getcwd()
     files = [os.path.join(cwd, "tests", "flake8_violation_files", f) for f in ["file1", "file2"]]
     with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_file_paths = []
         for f in files:
-            copy(f, os.path.join(tmp_dir, os.path.basename(f) + ".py"))
+            tmp_file_path = os.path.join(tmp_dir, os.path.basename(f) + ".py")
+            copy(f, tmp_file_path)
+            tmp_file_paths.append(tmp_file_path)
         os.chdir(tmp_dir)
-        yield tmp_dir
+        test_data = TestData(files=tmp_file_paths, dir=tmp_dir)
+        yield test_data
     os.chdir(cwd)
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def flake8_file_fixture() -> Generator[None, None, None]:
     flake8_path = os.path.join(os.getcwd(), ".flake8")
     if os.path.isfile(flake8_path):
@@ -39,14 +50,53 @@ def flake8_file_fixture() -> Generator[None, None, None]:
         yield
 
 
-def test_black_box_with_path_passed_to_flake8(python_dir_with_violations_fixture: str) -> None:
-    flake8_file = os.path.join(python_dir_with_violations_fixture, ".flake8")
+@pytest.fixture
+def violations_fixture(violations_test_dir: TestData) -> List[Violation]:
+    violations = [
+        Violation(
+            code="F841",
+            filename=violations_test_dir.files[0],
+            line_number=4,
+            column_number=5,
+            text="local variable 'nospacebetweenequals' is assigned to but never used",
+            physical_line="    nospacebetweenequalsagain=1\n",
+        ),
+        Violation(
+            code="E225",
+            filename=violations_test_dir.files[0],
+            line_number=4,
+            column_number=25,
+            text="missing whitespace around operator",
+            physical_line="    nospacebetweenequalsagain=1\n",
+        ),
+        Violation(
+            code="F841",
+            filename=violations_test_dir.files[1],
+            line_number=4,
+            column_number=5,
+            text="local variable 'nospacebetweenequals' is assigned to but never used",
+            physical_line="    nospacebetweenequalsagain=1\n",
+        ),
+        Violation(
+            code="E225",
+            filename=violations_test_dir.files[1],
+            line_number=4,
+            column_number=25,
+            text="missing whitespace around operator",
+            physical_line="    nospacebetweenequalsagain=1\n",
+        ),
+    ]
+    return violations
+
+
+def test_black_box_with_path_passed_to_flake8(violations_test_dir: TestData) -> None:
+    flake8_file = os.path.join(violations_test_dir.dir, ".flake8")
     assert os.path.isfile(flake8_file) is False
 
-    command = f"flake8 --format=scout --no-review-prompt {python_dir_with_violations_fixture}"
+    command = f"flake8 --format=scout --no-review-prompt {violations_test_dir.dir}"
     result = subprocess.run(
         command,
-        cwd=python_dir_with_violations_fixture,
+        cwd=violations_test_dir.dir,
         capture_output=True,
         text=True,
         shell=True,
@@ -71,7 +121,7 @@ def test_black_box_with_path_passed_to_flake8(python_dir_with_violations_fixture
 
     result2 = subprocess.run(
         command,
-        cwd=python_dir_with_violations_fixture,
+        cwd=violations_test_dir.dir,
         capture_output=True,
         text=True,
         shell=True,
@@ -82,14 +132,14 @@ def test_black_box_with_path_passed_to_flake8(python_dir_with_violations_fixture
     assert flake8_content2 == flake8_content
 
 
-def test_black_box(python_dir_with_violations_fixture: str) -> None:
-    flake8_file = os.path.join(python_dir_with_violations_fixture, ".flake8")
+def test_black_box(violations_test_dir: TestData) -> None:
+    flake8_file = os.path.join(violations_test_dir.dir, ".flake8")
     assert os.path.isfile(flake8_file) is False
 
     command = "flake8 --format=scout --no-review-prompt"
     result = subprocess.run(
         command,
-        cwd=python_dir_with_violations_fixture,
+        cwd=violations_test_dir.dir,
         capture_output=True,
         text=True,
         shell=True,
@@ -114,7 +164,7 @@ def test_black_box(python_dir_with_violations_fixture: str) -> None:
 
     result2 = subprocess.run(
         command,
-        cwd=python_dir_with_violations_fixture,
+        cwd=violations_test_dir.dir,
         capture_output=True,
         text=True,
         shell=True,
@@ -125,14 +175,13 @@ def test_black_box(python_dir_with_violations_fixture: str) -> None:
     assert flake8_content2 == flake8_content
 
 
-def test_black_box_with_ignore(python_dir_with_violations_fixture: str) -> None:
+def test_black_box_with_ignore(violations_test_dir: TestData) -> None:
     command = (
-        "flake8 --format=scout --no-review-prompt --ignore E302,F401 "
-        f"{python_dir_with_violations_fixture}"
+        "flake8 --format=scout --no-review-prompt --ignore E302,F401 " f"{violations_test_dir.dir}"
     )
     result = subprocess.run(
         command,
-        cwd=python_dir_with_violations_fixture,
+        cwd=violations_test_dir.dir,
         capture_output=True,
         text=True,
         shell=True,
@@ -143,14 +192,13 @@ def test_black_box_with_ignore(python_dir_with_violations_fixture: str) -> None:
     assert "Automatically adding '# noqa: <errors>' annotations" in result.stdout
 
 
-def test_black_box_with_select(python_dir_with_violations_fixture: str) -> None:
+def test_black_box_with_select(violations_test_dir: TestData) -> None:
     command = (
-        "flake8 --format=scout --no-review-prompt --select F841,E225 "
-        f"{python_dir_with_violations_fixture}"
+        "flake8 --format=scout --no-review-prompt --select F841,E225 " f"{violations_test_dir.dir}"
     )
     result = subprocess.run(
         command,
-        cwd=python_dir_with_violations_fixture,
+        cwd=violations_test_dir.dir,
         capture_output=True,
         text=True,
         shell=True,
@@ -197,7 +245,7 @@ def test_violation_by_line_add_noqa_to_line_codes_dont_add_all_code() -> None:
 
 @patch("builtins.input", return_value="y")
 def test_flake8_scout_rule_formatter(
-    mock_input: Mock, python_dir_with_violations_fixture: str
+    mock_input: Mock, violations_test_dir: TestData, violations_fixture: List[Violation]
 ) -> None:
     options = Namespace(
         output_file=None,
@@ -208,45 +256,7 @@ def test_flake8_scout_rule_formatter(
     )
     formatter = Flake8ScoutRuleFormatter(options)
     formatter.start()
-    # Too lazy to add ALL the violations, just add a few
-
-    file1 = python_dir_with_violations_fixture + "/file1.py"
-    file2 = python_dir_with_violations_fixture + "/file2.py"
-    violations = [
-        Violation(
-            code="F841",
-            filename=file1,
-            line_number=4,
-            column_number=5,
-            text="local variable 'nospacebetweenequals' is assigned to but never used",
-            physical_line="    nospacebetweenequalsagain=1\n",
-        ),
-        Violation(
-            code="E225",
-            filename=file1,
-            line_number=4,
-            column_number=25,
-            text="missing whitespace around operator",
-            physical_line="    nospacebetweenequalsagain=1\n",
-        ),
-        Violation(
-            code="F841",
-            filename=file2,
-            line_number=4,
-            column_number=5,
-            text="local variable 'nospacebetweenequals' is assigned to but never used",
-            physical_line="    nospacebetweenequalsagain=1\n",
-        ),
-        Violation(
-            code="E225",
-            filename=file2,
-            line_number=4,
-            column_number=25,
-            text="missing whitespace around operator",
-            physical_line="    nospacebetweenequalsagain=1\n",
-        ),
-    ]
-    for v in violations:
+    for v in violations_fixture:
         formatter.format(v)
 
     with patch("sys.stdout", new=StringIO()) as captured_stdout:
@@ -256,18 +266,18 @@ def test_flake8_scout_rule_formatter(
     print(f"Captured stdout:\n{stdout}")
     assert "Found 4 violations" in stdout
     noqa_addition = "  # noqa: E225, F841"
-    with open(file1, encoding="UTF-8") as f:
+    with open(violations_test_dir.files[0], encoding="UTF-8") as f:
         content = f.read()
         assert content.count(noqa_addition) == 1
 
-    with open(file2, encoding="UTF-8") as f:
+    with open(violations_test_dir.files[1], encoding="UTF-8") as f:
         content = f.read()
         assert content.count(noqa_addition) == 1
     assert mock_input.called is True
 
 
 def test_flake8_scout_rule_formatter_no_review_prompt(
-    python_dir_with_violations_fixture: str,
+    violations_test_dir: TestData, violations_fixture: List[Violation]
 ) -> None:
     options = Namespace(
         output_file=None,
@@ -278,45 +288,7 @@ def test_flake8_scout_rule_formatter_no_review_prompt(
     )
     formatter = Flake8ScoutRuleFormatter(options)
     formatter.start()
-    # Too lazy to add ALL the violations, just add a few
-
-    file1 = python_dir_with_violations_fixture + "/file1.py"
-    file2 = python_dir_with_violations_fixture + "/file2.py"
-    violations = [
-        Violation(
-            code="F841",
-            filename=file1,
-            line_number=4,
-            column_number=5,
-            text="local variable 'nospacebetweenequals' is assigned to but never used",
-            physical_line="    nospacebetweenequalsagain=1\n",
-        ),
-        Violation(
-            code="E225",
-            filename=file1,
-            line_number=4,
-            column_number=25,
-            text="missing whitespace around operator",
-            physical_line="    nospacebetweenequalsagain=1\n",
-        ),
-        Violation(
-            code="F841",
-            filename=file2,
-            line_number=4,
-            column_number=5,
-            text="local variable 'nospacebetweenequals' is assigned to but never used",
-            physical_line="    nospacebetweenequalsagain=1\n",
-        ),
-        Violation(
-            code="E225",
-            filename=file2,
-            line_number=4,
-            column_number=25,
-            text="missing whitespace around operator",
-            physical_line="    nospacebetweenequalsagain=1\n",
-        ),
-    ]
-    for v in violations:
+    for v in violations_fixture:
         formatter.format(v)
 
     with patch("sys.stdout", new=StringIO()) as captured_stdout:
@@ -326,10 +298,10 @@ def test_flake8_scout_rule_formatter_no_review_prompt(
     print(f"Captured stdout:\n{stdout}")
     assert "Found 4 violations" in stdout
     noqa_addition = "  # noqa: E225, F841"
-    with open(file1, encoding="UTF-8") as f:
+    with open(violations_test_dir.files[0], encoding="UTF-8") as f:
         content = f.read()
         assert content.count(noqa_addition) == 1
 
-    with open(file2, encoding="UTF-8") as f:
+    with open(violations_test_dir.files[1], encoding="UTF-8") as f:
         content = f.read()
         assert content.count(noqa_addition) == 1
