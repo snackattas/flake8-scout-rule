@@ -1,5 +1,7 @@
 """Utility functions for the flake8-scout rule."""
 import os
+import random
+import string
 
 
 def normalize_filename(filename: str) -> str:
@@ -28,3 +30,8 @@ def normalize_filename(filename: str) -> str:
         return filename_real.removeprefix(realcwd)
 
     return filename.removeprefix(".").removeprefix("/")
+
+
+def random_letters(num_letters: int) -> str:
+    """Generate a random string of the specified length consisting of ASCII letters."""
+    return "".join(random.choices(string.ascii_letters, k=num_letters))
