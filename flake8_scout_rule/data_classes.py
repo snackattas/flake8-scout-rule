@@ -93,7 +93,7 @@ class ViolationsByFile:
     per_file_violations_already_tracked: Optional[PerFileViolationsTracked] = None
 
     @property
-    def violations_by_count_string(self: Self) -> str:
+    def per_file_violations_tracked_string(self: Self) -> str:
         """
         Returns the list of codes and their counts as a single string.
 
@@ -102,6 +102,9 @@ class ViolationsByFile:
         """
         vbcs = ", ".join([vbc.code_with_violation_count for vbc in self.violations_by_count])
         return f"{self.filename}: {vbcs}"
+
+
+ReconciledViolationsByFile = ViolationsByFile
 
 
 @dataclass

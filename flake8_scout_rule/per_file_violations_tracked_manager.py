@@ -27,10 +27,10 @@ class PerFileViolationsTrackedManager:
         self.per_file_violations_tracked: List[PerFileViolationsTracked] = []
         # Validate the flake8 configuration file's per_file_violations_tracked key is formatted
         # correctly, if it exists
-        configurations = self.load_raw_per_file_violations_tracked()
-        if configurations:
+        self.configurations = self.load_raw_per_file_violations_tracked()
+        if self.configurations:
             self.per_file_violations_tracked = self.format_per_file_violations_tracked(
-                configurations
+                self.configurations
             )
 
     def load_raw_per_file_violations_tracked(  # noqa: CCR001, PLR911

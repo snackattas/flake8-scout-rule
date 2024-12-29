@@ -8,7 +8,6 @@ to ensure that the violations are not reintroduced.
 import argparse
 import fileinput
 import os
-from operator import attrgetter
 from shutil import move
 from typing import List, Optional, Type
 
@@ -20,7 +19,6 @@ from typing_extensions import Self
 
 from flake8_scout_rule.data_classes import (
     PerFileViolationsTracked,
-    ViolationsByCount,
     ViolationsByFile,
     ViolationsByLine,
 )
@@ -110,8 +108,7 @@ class Flake8ScoutRuleFormatter(Default):
                 return
 
         self.violations_manager.group_violations()
-        self._noqa_annotation_adder()
-        violations_by_file = self.violations_manager.violations_by_file
+        self._noqa_annotation_adder(self.violations_manager.violations_by_file)
         if self.options.no_update_flake8_config:
             print("Not updating the flake8 configuration file, exiting.")
             return
@@ -130,76 +127,16 @@ class Flake8ScoutRuleFormatter(Default):
             LOG.warning("Failed to load the flake8 configuration file, exiting.")
             return
 
-        filtered_vbf: List[ViolationsByFile] = []
-        for vbf in violations_by_file:
-            existing_violations_by_count = vbf.existing_violations_by_count
-            per_file_violations_already_tracked = vbf.per_file_violations_already_tracked
-
-            # If there are no existing violations, just add the ones found here, don't need to
-            # worry about the per_file_violations_tracked
-            if not existing_violations_by_count and not per_file_violations_already_tracked:
-                filtered_vbf.append(vbf)
-                continue
-
-            new_violations_by_count = vbf.violations_by_count
-            reconciled_violations: List[ViolationsByCount] = []
-            if existing_violations_by_count:
-                for nv in new_violations_by_count:
-                    current_code = nv.code
-                    evbc_code_found: List[ViolationsByCount] = list(
-                        filter(
-                            lambda e: e.code == current_code,  # noqa: PLW640
-                            existing_violations_by_count,
-                        )
-                    )
-                    evbc_code: Optional[ViolationsByCount] = None
-                    if evbc_code_found:
-                        evbc_code = evbc_code_found[0]
-                    # If we see the noqa codes already in the file, just add the existing count to
-                    # the new violations found this round
-                    if evbc_code:
-                        new_count = nv.count + evbc_code.count
-                        reconciled_violations.append(
-                            ViolationsByCount(filename=nv.filename, code=nv.code, count=new_count)
-                        )
-                    else:
-                        reconciled_violations.append(nv)
-            else:
-                reconciled_violations = new_violations_by_count
-
-            if per_file_violations_already_tracked:
-                per_file_violations_count = per_file_violations_already_tracked.violations_by_count
-                for per_file_violations in per_file_violations_count:
-                    code = per_file_violations.code
-                    found = list(
-                        filter(
-                            lambda nvbc: nvbc.code == code,  # noqa: PLW640
-                            new_violations_by_count,
-                        )
-                    )
-                    if not found:
-                        # TODO: maybe reconcile this with the existing codes in the file
-                        reconciled_violations.append(per_file_violations)
-            reconciled_violations.sort(key=attrgetter("code"))
-            filtered_vbf.append(
-                ViolationsByFile(filename=vbf.filename, violations_by_count=reconciled_violations)
-            )
-        # Now add in any per_file_violations_tracked that weren't found in this run
-        for pfvt in self.per_file_violations_tracked:
-            filename = pfvt.filename
-            found = list(
-                filter(lambda fvbf: fvbf.filename == filename, filtered_vbf)  # type: ignore  # noqa: PLW640
-            )
-            if not found:
-                vbc: List[ViolationsByCount] = pfvt.violations_by_count
-                filtered_vbf.append(ViolationsByFile(filename=filename, violations_by_count=vbc))
-
-        filtered_vbf.sort(key=attrgetter("filename"))
-        tracked_violation_strs: List[str] = [vbf.violations_by_count_string for vbf in filtered_vbf]
-        pfvt_formatted: str = "\n" + "\n".join(tracked_violation_strs)
+        reconciled_vfb = (
+            self.violations_manager.reconcile_violations_for_updating_per_file_violations_tracked()
+        )
+        reconciled_pfvt_strs: List[str] = [
+            vbf.per_file_violations_tracked_string for vbf in reconciled_vfb
+        ]
+        reconciled_pfvt_formatted: str = "\n" + "\n".join(reconciled_pfvt_strs)
         configurations.configparser["flake8_scout_rule"][
             "per_file_violations_tracked"
-        ] = pfvt_formatted
+        ] = reconciled_pfvt_formatted
         with open(configurations.config_file, "w", encoding="UTF-8") as f:
             configurations.configparser.write(f)
         print(
@@ -295,7 +232,7 @@ class Flake8ScoutRuleFormatter(Default):
             else:
                 print("\nInvalid input. Please enter 'y' or 'n' or '?'.")
 
-    def _noqa_annotation_adder(self: Self) -> None:
+    def _noqa_annotation_adder(self: Self, violations_by_file: List[ViolationsByFile]) -> None:
         """
         Adds '# noqa: <errors>' annotations to lines in files with violations.
 
@@ -309,7 +246,7 @@ class Flake8ScoutRuleFormatter(Default):
             f"{no_review_prompt_prefix}dding '# noqa: <errors>' annotations to the files "
             "with violations now:"
         )
-        for file_violations in self.violations_manager.violations_by_file:
+        for file_violations in violations_by_file:
             LOG.debug(
                 f"Adding '# noqa: <errors>' annotations to file: '{file_violations.filename}'"
             )

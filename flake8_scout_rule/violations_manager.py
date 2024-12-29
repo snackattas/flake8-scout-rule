@@ -2,7 +2,7 @@ import re
 from collections import Counter
 from itertools import groupby
 from operator import attrgetter
-from typing import List
+from typing import List, Optional
 
 from flake8.defaults import NOQA_INLINE_REGEXP
 from flake8.violation import Violation
@@ -10,6 +10,7 @@ from typing_extensions import Self
 
 from flake8_scout_rule.data_classes import (
     ExistingViolationsByCount,
+    ReconciledViolationsByFile,
     ViolationsByCount,
     ViolationsByFile,
     ViolationsByLine,
@@ -30,9 +31,9 @@ class ViolationsManager:
         self.violations.append(violation)
 
     @staticmethod
-    def group_file_violations_by_line(  # noqa: CCR001
+    def group_file_violations_by_line(
         violations_by_file: ViolationsByFile,
-    ) -> List[ViolationsByLine]:
+    ) -> List[ViolationsByLine]:  # noqa: CCR001
         """
         Group violations by line within a file.
 
@@ -141,3 +142,89 @@ class ViolationsManager:
         if found_per_file_violations_tracked:
             vbf.per_file_violations_already_tracked = found_per_file_violations_tracked[0]
         self.violations_by_file = violations_by_file
+
+    def reconcile_violations_for_updating_per_file_violations_tracked(  # noqa: C901
+        self: Self,
+    ) -> List[ReconciledViolationsByFile]:
+        """
+        Reconcile the violations with the existing per_file_violations_tracked key in the flake8 configuration file.
+
+        This method processes the violations grouped by file and reconciles them with the
+        per_file_violations_tracked key in the flake8 configuration file. It ensures that the
+        violations are correctly tracked and updated in the configuration file.
+        """
+        reconciled_vbfs: List[ReconciledViolationsByFile] = []
+
+        for vbf in self.violations_by_file:
+            existing_violations_by_count = vbf.existing_violations_by_count
+            per_file_violations_already_tracked = vbf.per_file_violations_already_tracked
+
+            # If there are no existing violations, just add the ones found here, don't need to
+            # worry about the per_file_violations_tracked
+            if not existing_violations_by_count and not per_file_violations_already_tracked:
+                reconciled_vbfs.append(vbf)
+                continue
+
+            newly_added_vbcs = vbf.violations_by_count
+            reconciled_vbcs: List[ViolationsByCount] = []
+            if existing_violations_by_count:
+                for nv in newly_added_vbcs:
+                    current_code = nv.code
+                    evbc_code_found: List[ViolationsByCount] = list(
+                        filter(
+                            lambda e: e.code == current_code,  # noqa: PLW640
+                            existing_violations_by_count,
+                        )
+                    )
+                    evbc_code: Optional[ViolationsByCount] = None
+                    if evbc_code_found:
+                        evbc_code = evbc_code_found[0]
+                    # If we see the noqa codes already in the file, just add the existing count to
+                    # the new violations found this round
+                    if evbc_code:
+                        new_count = nv.count + evbc_code.count
+                        reconciled_vbcs.append(
+                            ViolationsByCount(filename=nv.filename, code=nv.code, count=new_count)
+                        )
+                    else:
+                        reconciled_vbcs.append(nv)
+            else:
+                reconciled_vbcs = newly_added_vbcs
+
+            # We only care about per_file_violations_tracked if there are tracked violations of
+            # OTHER codes in the file (not overlapping with any found this run),
+            # or other files that have been tracked that don't have violations in this run
+            # Because otherwise, we just read the file ourselves to manage counting the violations
+            if per_file_violations_already_tracked:
+                per_file_violations_count = per_file_violations_already_tracked.violations_by_count
+                for per_file_violations in per_file_violations_count:
+                    code = per_file_violations.code
+                    found = list(
+                        filter(
+                            lambda nvbc: nvbc.code == code,  # noqa: PLW640
+                            reconciled_vbcs,
+                        )
+                    )
+                    if not found:
+                        # TODO: maybe reconcile this with the existing codes in the file
+                        reconciled_vbcs.append(per_file_violations)
+            reconciled_vbcs.sort(key=attrgetter("code"))
+            reconciled_vbfs.append(
+                ReconciledViolationsByFile(
+                    filename=vbf.filename, violations_by_count=reconciled_vbcs
+                )
+            )
+        # Now add in any per_file_violations_tracked that weren't found in this run
+        for pfvt in self.per_file_violations_tracked_manager.per_file_violations_tracked:
+            filename = pfvt.filename
+            found = list(
+                filter(lambda fvbf: fvbf.filename == filename, reconciled_vbfs)  # type: ignore  # noqa: PLW640
+            )
+            if not found:
+                vbc: List[ViolationsByCount] = pfvt.violations_by_count
+                reconciled_vbfs.append(
+                    ReconciledViolationsByFile(filename=filename, violations_by_count=vbc)
+                )
+
+        reconciled_vbfs.sort(key=attrgetter("filename"))
+        return reconciled_vbfs
